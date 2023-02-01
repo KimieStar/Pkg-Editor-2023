@@ -15,6 +15,9 @@ using System.Threading.Tasks;
 using System.IO.MemoryMappedFiles;
 using LibOrbisPkg.PFS;
 using LibOrbisPkg.SFO;
+using LibOrbisPkg.Kimie;
+using System.Threading;
+using System.Reflection;
 
 namespace PkgEditor.Views
 {
@@ -487,7 +490,7 @@ namespace PkgEditor.Views
       }
     }
 
-    private void Button2_Click(object sender, EventArgs e)
+    private async void Button2_Click(object sender, EventArgs e)
     {
       var sfd = new SaveFileDialog()
       {
@@ -495,11 +498,57 @@ namespace PkgEditor.Views
         Filter = "GP4 Projects|Project.gp4",
         Title = "Choose a location for the exported PKG and project file",
       };
-      if(sfd.ShowDialog() == DialogResult.OK)
+
+      if (sfd.ShowDialog() == DialogResult.OK)
       {
-        var outputDir = Path.GetDirectoryName(sfd.FileName);
-        LibOrbisPkg.GP4.Gp4Creator.CreateProjectFromPKG(outputDir, pkgFile, passcode);
-        MessageBox.Show("PKG Exported to " + outputDir);
+
+        Counter counter = new Counter();
+        int count = counter.CountPkfFiles(pkgFile);
+
+        var t = Task.Run(() => {
+          Invoke(new Action(() => {
+            extractProgressBar.Maximum = count;
+          }));
+          int a = 0;
+          for (int i = 0; i < counter.CountPkfFiles(pkgFile); i = Count.Count1)
+          {
+            a = i;
+
+            Invoke(new Action(() =>
+            {
+              extractProgressBar.Value = a;
+            }));
+          }
+
+
+        });
+        var tt = Task.Run(() =>
+        {
+
+          
+          Thread thread = new Thread((ThreadStart)(() =>
+          {
+            var outputDir = Path.GetDirectoryName(sfd.FileName);
+            LibOrbisPkg.GP4.Gp4Creator.CreateProjectFromPKG(outputDir, pkgFile, passcode);
+
+          }));
+          thread.SetApartmentState(ApartmentState.STA);
+          thread.Start();
+          thread.Join();
+        });
+
+
+        await Task.WhenAll(t, tt);
+        if (extractProgressBar.Value != count)
+        {
+          extractProgressBar.Value = count;
+        }
+        MessageBox.Show("Extracted!");
+        Invoke(new Action(() =>
+        {
+          extractProgressBar.Value = 0;
+        }));
+        Count.Count1 = 0;
       }
     }
   }

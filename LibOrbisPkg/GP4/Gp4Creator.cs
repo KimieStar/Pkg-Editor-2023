@@ -7,6 +7,7 @@ using LibOrbisPkg.PFS;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using LibOrbisPkg.Util;
+using LibOrbisPkg.Kimie;
 
 namespace LibOrbisPkg.GP4
 {
@@ -33,6 +34,7 @@ namespace LibOrbisPkg.GP4
 
     public static void CreateProjectFromPKG(string outputDir, MemoryMappedFile pkgFile, string passcode = null)
     {
+      int count = 0;
       Directory.CreateDirectory(outputDir);
       Pkg pkg;
       using (var f = pkgFile.CreateViewStream(0, 0, MemoryMappedFileAccess.Read))
@@ -93,6 +95,8 @@ namespace LibOrbisPkg.GP4
         using (var entryFile = File.Create(filename))
         {
           s.CopyTo(entryFile);
+          count++;
+          Count.Count1 = count;
         }
       }
 
@@ -175,6 +179,8 @@ namespace LibOrbisPkg.GP4
                 TargetPath = path
               });
               file.Save(Path.Combine(outputDir, path));
+              count++;
+              Count.Count1 = count;
             }
           }
         }

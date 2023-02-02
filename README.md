@@ -1,4 +1,4 @@
-This is my veresion of LibOrbisPkg\
+This is an enhanced version of <a href = "https://github.com/maxton">maxton's</a> / <a href= "https://github.com/maxton/LibOrbisPkg">LibOrbisPkg</a>\
 And some features are going to be added\
 :p
 

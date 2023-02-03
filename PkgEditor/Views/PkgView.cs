@@ -462,11 +462,52 @@ namespace PkgEditor.Views
       }
     }
 
+    void ExtractEntryPlayGoChunk(MetaEntry entry, string FileName,bool decrypt = false)
+    {
+      if (decrypt && entry.Encrypted && passcode == null && entry.KeyIndex != 3)
+      {
+        var gotPasscode = false;
+        while (gotPasscode == false)
+        {
+          gotPasscode = RequestPasscode();
+          if (gotPasscode) break;
+          var result = MessageBox.Show(
+            "Sorry, that passcode was incorrect." + Environment.NewLine
+            + "Abort to cancel extraction, ignore to extract in encrypted form, retry to try a new passcode.",
+            "Invalid Passcode",
+            MessageBoxButtons.AbortRetryIgnore,
+            MessageBoxIcon.Warning);
+          if (result == DialogResult.Abort)
+            return;
+          if (result == DialogResult.Ignore)
+            break;
+        }
+      }
+      var name = entry.NameTableOffset != 0 ? pkg.EntryNames.GetName(entry.NameTableOffset) : entry.id.ToString();
+       var totalEntrySize = entry.Encrypted ? (entry.DataSize + 15) & ~15 : entry.DataSize;
+        using (var f = File.OpenWrite(FileName))
+        using (var entryStream = pkgFile.CreateViewStream(entry.DataOffset, totalEntrySize, MemoryMappedFileAccess.Read))
+        {
+          if (entry.Encrypted && decrypt && (passcode != null || entry.KeyIndex == 3))
+          {
+            var tmp = new byte[totalEntrySize];
+            entryStream.Read(tmp, 0, tmp.Length);
+            tmp = entry.KeyIndex == 3 ? Entry.Decrypt(tmp, pkg, entry) : Entry.Decrypt(tmp, pkg.Header.content_id, passcode, entry);
+            f.Write(tmp, 0, (int)entry.DataSize);
+          }
+          else
+          {
+            entryStream.CopyTo(f);
+          }
+        }
+      
+    }
     private void ExtractToolStripMenuItem_Click(object sender, EventArgs e)
     {
       if(entriesListView.SelectedItems.Count == 1)
       {
-        ExtractEntry(entriesListView.SelectedItems[0].Tag as MetaEntry);       
+        ExtractEntry(entriesListView.SelectedItems[0].Tag as MetaEntry);
+        
       }
     }
     private void ToolStripMenuItem1_Click(object sender, EventArgs e)
@@ -487,6 +528,21 @@ namespace PkgEditor.Views
       {
         extractToolStripMenuItem.Enabled = true;
         extractDecryptedMenuItem.Enabled = (entriesListView.SelectedItems[0].Tag as MetaEntry)?.Encrypted ?? false;
+      }
+    }
+
+    public void ExtractPlayGoCunkDat(string FileName)
+    {
+      int i = 1;
+      while (true)
+      {
+        if (entriesListView.Items[i].Text == "PLAYGO_CHUNK_DAT")
+        {
+          ExtractEntryPlayGoChunk(entriesListView.Items[i].Tag as MetaEntry,FileName,true);
+          break;
+        }
+
+        i++;
       }
     }
 
@@ -530,7 +586,7 @@ namespace PkgEditor.Views
           {
             var outputDir = Path.GetDirectoryName(sfd.FileName);
             LibOrbisPkg.GP4.Gp4Creator.CreateProjectFromPKG(outputDir, pkgFile, passcode);
-
+            ExtractPlayGoCunkDat(Path.Combine(outputDir, "sce_sys", "playgo-chunk.dat"));
           }));
           thread.SetApartmentState(ApartmentState.STA);
           thread.Start();
